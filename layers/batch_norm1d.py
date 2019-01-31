@@ -48,6 +48,9 @@ class batch_norm1d():
             self.batch_var = self.momentum*self.batch_var + (1-self.momentum) * var
             self.batches_tracked += 1
             return out
+        else:
+            out = ((self.gamma/np.sqrt(self.batch_var + 0.00005)) * inp) + self.beta - ((self.gamma * self.batch_mean)/np.sqrt(self.batch_var + 0.00005))
+            return out
             
     def backward(self, norm_error):
         if norm_error.shape != self.temp_inp.shape:
