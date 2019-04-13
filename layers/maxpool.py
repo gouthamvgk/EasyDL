@@ -1,13 +1,22 @@
 import numpy as np
 
 class maxpool():
+    """
+        Does maxpooling over the given input \n
+        kernel_size: kernel dimension for doing maxpool(supports only nxn)\n
+        stride: stride for doing maxpooling Default:1 \n
+        padding: Amount of padding to be added Default:0 \n
+    """
     def __init__(self, kernel_size, stride=1, padding=0):
+        self.name="maxpool"
         self.parameters = False
         self.kernel_size = kernel_size
         self.stride = stride
         self.pad = padding
         self.max_map = None
         self.input_shape = None
+        self.message = "Added maxpool layer to model with kernel size {}, stride {} \
+, pad {}".format(self.kernel_size, self.stride, self.pad)
         
     def check_find_dim(self, shape):
         if (len(shape) != 4):
@@ -36,7 +45,8 @@ class maxpool():
                 max_map[:,h,w] = indices
         return out, max_map
         
-    def __call__(self, inp):
+    def __call__(self, inp,i):
+        print('*'*15,'Going through layer {}->Maxpool layer'.format(i),'*'*15)
         out_dim = self.check_find_dim(inp.shape)
         self.input_shape = inp.shape
         out = np.zeros((inp.shape[0], inp.shape[1], out_dim, out_dim))
@@ -45,6 +55,7 @@ class maxpool():
         for k in range(inp.shape[1]):
             out[:,k,:,:], max_map[:,k,:,:] = self.find_map(inp[:,k,:,:], out_dim)
         self.max_map = max_map
+        print('*' * 70)
         return out
     
     def backward(self, error):

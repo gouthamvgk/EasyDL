@@ -2,10 +2,15 @@ import numpy as np
 import warnings
 
 class reshape():
+    """
+        Reshapes the given array into requried dimension
+    """
     def __init__(self):
+        self.name = "reshape"
         self.input_shape = None
         self.output_shape = None
         self.parameters = False
+        self.message = "Added reshape layer to the model"
     
     def __call__(self, inp, out_shape):
         inp_shape = inp.shape
@@ -15,6 +20,7 @@ class reshape():
             warnings.warn('Dimension 1 usually corresponds to batch size, reshaping is carried out with respect to that dimension')
         self.input_shape = inp_shape
         self.output_shape = tuple(out_shape)
+        print('*'*70)
         return inp.reshape(out_shape)
     
     def backward(self, error):

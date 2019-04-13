@@ -2,7 +2,20 @@
 import numpy as np
 
 class Convolution():
+    """
+    Peforms convolution operation over the input.\n
+    inp_fea: No. of channels in input \n
+    out_fea: No. of channels required in output \n
+    kernel: kernel dimension(supports only nxn) \n
+    stride: stride for convolution\n
+    pad_type: type of padding\n
+        'same' - pads necessarily for same shape in output(dimensions should match)\n
+        'valid'- pads according to given value\n
+    pad: Amound of padding. Necessary only if pad_type='valid' \n
+    bias: To use bias or not for filter. Default=True\n
+    """
     def __init__(self, inp_fea, out_fea, kernel, stride, pad_type, pad = None, bias = True):
+        self.name = "conv"
         self.parameters = True
         self.inp_fea = inp_fea
         self.out_fea = out_fea
@@ -17,6 +30,10 @@ class Convolution():
             raise ValueError('Padding dim must be specified for valid convolution')
         self.initiate()
         self.set_buff_grad()
+        self.message = "Added conv layer to the model with {}\
+  inp channels, {} out channels, kernel size {}, stride {} and {}\
+ pad".format(self.inp_fea, self.out_fea, self.kernel_size, self.stride, self.pad_type)
+        
         
     def initiate(self):
         self.filters = np.random.standard_normal(size=(self.out_fea, self.inp_fea, self.kernel_size, self.kernel_size))
@@ -31,20 +48,31 @@ class Convolution():
         self.output_size = None
         
     def find_same_pad(self, fea_size):
+        
         pad = (fea_size * (self.stride-1) + self.kernel_size - self.stride)/2
         if (pad).is_integer():
             self.pad = int(pad)
+            print("Padding type is 'same' (output size same as input)...")
+            print('Calculating pad value using formula--->(feature_size * (stride-1) + kernel_size - stride)/2')
+            print('({} * ({}-1) + {} - {})/2 ------>same pad value= {}'.format(fea_size, self.stride, self.kernel_size, self.stride, self.pad))
+            print('-'*60)
         else:
             raise ValueError('Same convolution cannot be performed for given feature dimension')
             
-    def find_out_dim(self, fea_size):
+    def find_out_dim(self, fea_size, same_pad):
         out  = ((fea_size + 2*self.pad - self.kernel_size)/self.stride) + 1
         if (out).is_integer():
+            print("Output feature map size is determined by kernel, stride and pad")
+            print("Calculating output feature map size using formula--->((feature_size + 2*pad - kernel_size)/stride) + 1")
+            print("(({} + 2*{} - {})/{}) + 1------->out feature size = {}".format(fea_size, self.pad, self.kernel_size, self.stride, out))
+            if same_pad:
+                print("It is same padding layer so input and output is of same size")
+            print('-'*60)
             return int(out)
         else:
             raise ValueError('Given feature size doesnt suit the layer parameters')
      
-    def convolution(self, shape, fil, inp, out_dim, forward = True):
+    def convolution(self, shape, fil, inp, out_dim, fil_no, forward = True):
         fil = fil.reshape(1,fil.shape[0]*fil.shape[1]*fil.shape[2])
         temp_out = np.zeros((inp.shape[0], 1, out_dim, out_dim))
         temp_fil = np.repeat(fil, repeats = inp.shape[0], axis = 0)
@@ -58,14 +86,15 @@ class Convolution():
                 temp_inp = inp[:,:,i:i+self.kernel_size,j:j+self.kernel_size].reshape(inp_shape[0], inp_shape[1]*self.kernel_size*self.kernel_size)
                 out = temp_inp * temp_fil
                 if self.is_bias and forward:
-                    out += self.bias
+                    out += self.bias[fil_no]
                 out = np.sum(out, axis = 1, keepdims=True)
                 temp_out[:,:,h,w] = out
         temp_out = np.squeeze(temp_out, axis = 1)
         return temp_out      
                 
         
-    def __call__(self, inp):
+    def __call__(self, inp, i):
+        print('*'*15,'Going through layer {}->conv layer'.format(i),'*'*15)
         shape = inp.shape
         if (shape[1] != self.inp_fea):
             raise ValueError('No. of input channels is not suited for the layer')
@@ -78,17 +107,26 @@ class Convolution():
                 print(err)
                 return
         try:
-            out_dim = self.find_out_dim(shape[2])
+            out_dim = self.find_out_dim(shape[2], (self.pad_type=='same'))
         except ValueError as err:
             print(err)
             return
+        print('Input Feature map shape before padding---->{}'.format(shape[1:]))
         inp = np.pad(inp, ((0,0),(0,0),(self.pad,self.pad),(self.pad,self.pad)), 'constant', constant_values=((0,0),))
         shape = inp.shape
+        print('Input Feature map shape after padding for conv operation----->{}'.format(shape[1:]))
         output = np.zeros((shape[0], self.out_fea, out_dim, out_dim))
+        print('Dimension of output feature map----->{}'.format(output.shape[1:]))
+        print('-'*60)
+        print('There are {} channels in the output'.format(self.out_fea))
         for k in range(self.out_fea):
-            output[:,k,:,:] = self.convolution(shape, self.filters[k], inp, out_dim)
+            print('Calculating channel {} of the output...'.format(k+1))
+            print('Filter {} of dims {} is being convolved with padded input of dims {}'.format(k+1, self.filters[k].shape, shape[1:]))
+            output[:,k,:,:] = self.convolution(shape, self.filters[k], inp, out_dim, fil_no=k)
+            print('x'*50)
         self.output_size = output.shape
         self.input = inp
+        print('*' * 70)
         return output
         
     def backward_conv(self, inp, error):
@@ -142,7 +180,7 @@ class Convolution():
         temp_error = np.pad(temp_error, ((0,0),(0,0),(self.kernel_size-1,self.kernel_size-1),(self.kernel_size-1,self.kernel_size-1)), 'constant', constant_values=((0,0),))
         shape = temp_error.shape
         for k in range(self.inp_fea):
-            inp_grad[:,k,:,:] = self.convolution(shape, flipped_kernel[:,k,:,:],temp_error, self.input.shape[-1], forward = False)
+            inp_grad[:,k,:,:] = self.convolution(shape, flipped_kernel[:,k,:,:],temp_error, self.input.shape[-1], fil_no=k,forward = False)
         return inp_grad 
             
     def gradient_step(self, step_size):
