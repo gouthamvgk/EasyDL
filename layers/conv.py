@@ -1,6 +1,6 @@
 
 import numpy as np
-
+import time
 class Convolution():
     """
     Peforms convolution operation over the input.\n
@@ -72,7 +72,7 @@ class Convolution():
         else:
             raise ValueError('Given feature size doesnt suit the layer parameters')
      
-    def convolution(self, shape, fil, inp, out_dim, fil_no, forward = True):
+    def convolution(self, shape, fil, inp, out_dim, fil_no, forward = True, print_=True):
         fil = fil.reshape(1,fil.shape[0]*fil.shape[1]*fil.shape[2])
         temp_out = np.zeros((inp.shape[0], 1, out_dim, out_dim))
         temp_fil = np.repeat(fil, repeats = inp.shape[0], axis = 0)
@@ -81,19 +81,28 @@ class Convolution():
         for i in range(0,shape[2]+1-self.kernel_size, self.stride):
             h += 1
             w = -1
+            limit = 0
             for j in range(0, shape[2]+1-self.kernel_size, self.stride):
                 w += 1
                 temp_inp = inp[:,:,i:i+self.kernel_size,j:j+self.kernel_size].reshape(inp_shape[0], inp_shape[1]*self.kernel_size*self.kernel_size)
+                if print_ and limit < 3:
+                    print('Input[:,:,{}:{},{}:{}] is convolved with the filter {} to give \
+output[:,{},{},{}]'.format(i,i+self.kernel_size, j,j+self.kernel_size, fil_no+1, fil_no, h,w))
+                elif print_ and limit >=3 and limit < 6:
+                    print(' '*40, '.', ' '*40)
                 out = temp_inp * temp_fil
                 if self.is_bias and forward:
                     out += self.bias[fil_no]
                 out = np.sum(out, axis = 1, keepdims=True)
                 temp_out[:,:,h,w] = out
+                limit += 1
+            if print_:
+                print('-'*50)
         temp_out = np.squeeze(temp_out, axis = 1)
         return temp_out      
                 
         
-    def __call__(self, inp, i):
+    def __call__(self, inp, i, verb_neat=True):
         print('*'*15,'Going through layer {}->conv layer'.format(i),'*'*15)
         shape = inp.shape
         if (shape[1] != self.inp_fea):
@@ -119,11 +128,27 @@ class Convolution():
         print('Dimension of output feature map----->{}'.format(output.shape[1:]))
         print('-'*60)
         print('There are {} channels in the output'.format(self.out_fea))
+        print('Convolution at each position is done as follows...')
+        print('K th filter of dimension {} is flattened into {}...'.format(self.filters[0].shape, (1,np.product(self.filters[0].shape))))
+        print('A window of input of dimension {} is flattened into {}...'.format(self.filters[0].shape, (1,np.product(self.filters[0].shape))))
+        print('Both these are dot producted to form output[:,k,i,j]')
+        print('*' * 70)
         for k in range(self.out_fea):
             print('Calculating channel {} of the output...'.format(k+1))
             print('Filter {} of dims {} is being convolved with padded input of dims {}'.format(k+1, self.filters[k].shape, shape[1:]))
-            output[:,k,:,:] = self.convolution(shape, self.filters[k], inp, out_dim, fil_no=k)
-            print('x'*50)
+            if not verb_neat:
+                output[:,k,:,:] = self.convolution(shape, self.filters[k], inp, out_dim, fil_no=k, print_=True)
+                print('x'*50)
+            elif verb_neat and (k <=1 or k==(self.out_fea-1)):
+                output[:,k,:,:] = self.convolution(shape, self.filters[k], inp, out_dim, fil_no=k, print_=True)
+                print('x'*50)
+            elif verb_neat:
+                output[:,k,:,:] = self.convolution(shape, self.filters[k], inp, out_dim, fil_no=k, print_=False)
+                print(' '*40, '.', ' '*40)
+                print(' '*40, '.', ' '*40)
+                print(' '*40, '.', ' '*40)
+                print('x'*50)
+                time.sleep(1)
         self.output_size = output.shape
         self.input = inp
         print('*' * 70)
