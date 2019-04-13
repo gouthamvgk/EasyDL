@@ -16,11 +16,20 @@ class model():
         print(layer.message+" as layer {}".format(len(self.layers)))
         print('*'*60)
         
-    def __call__(self, inp):
+    def __call__(self, inp, neat=True):
         print('*'*70)
         print('No. of batches in input {}\nInput is of dimension{}'.format(inp.shape[0], inp.shape[1:]))
         print('*'*70)
         out = inp
         for i,k in enumerate(self.layers):
-            out = k(out, i+1)
+            if k.name == 'conv':
+                try:
+                    out = k(out, i+1, neat)
+                except ValueError as err:
+                    raise ValueError(err)
+            else:
+                try:
+                    out = k(out, i+1)
+                except ValueError as err:
+                    raise ValueError(err)
         return out

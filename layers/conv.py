@@ -48,7 +48,6 @@ class Convolution():
         self.output_size = None
         
     def find_same_pad(self, fea_size):
-        
         pad = (fea_size * (self.stride-1) + self.kernel_size - self.stride)/2
         if (pad).is_integer():
             self.pad = int(pad)
@@ -113,13 +112,11 @@ output[:,{},{},{}]'.format(i,i+self.kernel_size, j,j+self.kernel_size, fil_no+1,
             try:
                 self.find_same_pad(shape[2])
             except ValueError as err:
-                print(err)
-                return
+                raise ValueError(err)
         try:
             out_dim = self.find_out_dim(shape[2], (self.pad_type=='same'))
         except ValueError as err:
-            print(err)
-            return
+            raise ValueError(err)
         print('Input Feature map shape before padding---->{}'.format(shape[1:]))
         inp = np.pad(inp, ((0,0),(0,0),(self.pad,self.pad),(self.pad,self.pad)), 'constant', constant_values=((0,0),))
         shape = inp.shape

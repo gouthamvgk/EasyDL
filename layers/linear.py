@@ -44,7 +44,10 @@ class Linear_layer():
     
     def __call__(self, inp, i):
         print('*'*15,'Going through layer {}->Linear layer'.format(i),'*'*15)
-        out = np.matmul(inp, self.weight)
+        try:
+            out = np.matmul(inp, self.weight)
+        except ValueError as err:
+            raise ValueError(err)
         mess = "Input batch size->{}, Remaining Dimension->{} \nMultiplied with weight \
 matrix of dimension {} \nOutput is of size {}".format(inp.shape[0], inp.shape[1],self.weight.shape, out.shape)
         print(mess)
